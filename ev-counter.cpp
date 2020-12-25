@@ -1,10 +1,10 @@
-/*-------------------------------------------------------------------
+/*----------------------------------------------------------------------
 
 ev-counter.cpp
 
 Copyright (C) Elizabeth Bergshoeff 2020
 
-*///-----------------------------------------------------------------
+*///--------------------------------------------------------------------
 
 /*
 read:
@@ -41,43 +41,32 @@ read:
 			reserved characters include ' ', '\n', ev, '!'
 */
 
-#ifndef WINDOWS
-#define bluet_types
-typedef unsigned char uchar;
-#endif
-
-
-#define pokeid_default '!'
 #define idlist_end '\n'
 
 #include <iostream>
 #include <fstream>
-#include <memory>
-#include <vector>
-#include <string>
+#include "Effort_Values.h"
 
 
 using namespace std;
 
-
-struct Pokemon
-{
-	string name;
-	char id = pokeid_default;
-	uchar eva = 0;
-	uchar evd = 0;
-	uchar evp = 0;
-	uchar evq = 0;
-	uchar evs = 0;
-	uchar evh = 0;
-
-	Pokemon(char c, string s) : id(c), name(s) {}
-};
-
 struct Error_fin_bad {};
 struct Error_empty_evlist {};
-struct Error_repeated_id { char id = pokeid_default; Error_repeated_id(char c) : id(c) {} };
+struct Error_repeated_id 
+{
+	Error_repeated_id() = delete;
+	Error_repeated_id(char c) : id(c) {}
+
+	char id;
+};
 struct Error_filein { string path; Error_filein(const char* s) : path(s) {} };
+struct Error_pokemon_push_back {};
+struct Error_pokemon_get_index {};
+
+
+
+
+
 
 class EV_Counter_App
 {
@@ -93,13 +82,7 @@ private:
 	
 private:
 	//used by pokemon_decl to check for repeated ids
-	const inline bool is_id(char c) 
-	{ 
-		//find returns end if the given id is not found in idlist. 
-		//if find returns end, then c is not an id. otherwise, c is an id
-		if ( find(idlist.begin() , idlist.end() , c) == idlist.end() ) return false; 
-		return true; 
-	}
+
 
 private:
 	const char* filein = "evlist.txt";
