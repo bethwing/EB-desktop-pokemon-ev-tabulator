@@ -115,6 +115,10 @@ private:
 
 void EV_Counter_App::read()
 {
+	//clear storage
+	idlist.resize(0);
+	evlist.resize(0);
+
 	fin.open(filein);
 	if (fin)
 	{
@@ -149,6 +153,7 @@ void EV_Counter_App::pokemon_decl()
 		//check for a redundant id
 		if (is_id(c))
 			throw Error_repeated_id(c);
+		idlist.push_back(c);
 
 		//id is a new id, fetch the pokemon name
 		fin >> s;
