@@ -108,6 +108,24 @@ private:
 	const char* fileout = "evsheet.txt";
 	ofstream fout;
 
+	/*
+	'idlist' and 'evlist' are related and share special properties
+	specifically
+	1. evlist and idlist should always be the same size
+	2. items in evlist and idlist which share an index are related in some way. 
+		In this case, they have the same id and this property is used to find ids in evlist
+		in the routines void pokemon_decl() and void ev_decl() in class EV_Counter_App
+		
+		if somehow they become different sizes debugging becomes difficult:
+		use of one or the other may seem reasonable in its context but its complement may not be needed
+		and may be 'brought out of order' due to edits to the one (see 1). This can cause problems in other
+		parts of the application which may be hard to track down; the issue may not be clear in context
+		due to routines like "is_id" which implicitly references only 1 of the below
+
+		TL DR; These two should always be the same size and as such should be appended together;
+			respectively they should be encapsulated together in a single object to make the code more readable.
+			see the routine void pokemon_decl() and void read() in class EV_Counter_App
+	*/
 	vector<unique_ptr<Pokemon>> evlist;
 	vector<char> idlist;
 };
@@ -153,7 +171,6 @@ void EV_Counter_App::pokemon_decl()
 		//check for a redundant id
 		if (is_id(c))
 			throw Error_repeated_id(c);
-		idlist.push_back(c);
 
 		//id is a new id, fetch the pokemon name
 		fin >> s;
@@ -165,13 +182,54 @@ void EV_Counter_App::pokemon_decl()
 
 		unique_ptr<Pokemon> temp = make_unique<Pokemon>(c, s);
 
-		//store pokemon
+		//store pokemon and id
 		evlist.push_back(move(temp));
+		idlist.push_back(c);
+
 	} while (1);
 }
 
 void EV_Counter_App::ev_decl()
 {
+	vector<int> temp(6);
+	char c;
+	vector<uchar> active_ids;
+	while (1)
+	{
+		//read a character
+		fin.get(c);
+		if (fin.bad())
+			throw Error_fin_bad();
+		if (fin.fail())
+			return;
+
+		switch (c)
+		{
+		case 'h':
+			break;
+		case 'a':
+			break;
+		case 'd':
+			break;
+		case 'p':
+			break;
+		case 'q':
+			break;
+		case 's':
+			break;
+		default:
+			auto idit = find(idlist.begin(), idlist.end(), c);
+			if (idit == idlist.end())
+				throw Error_evlist_bad_id(c);
+			//add the tallied evs to the respective pokemon
+			
+			//clear the active ids
+			//find the new id
+
+		}
+
+	}
+
 }
 
 void EV_Counter_App::write_out()
