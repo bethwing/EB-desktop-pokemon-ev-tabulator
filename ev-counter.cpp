@@ -5,15 +5,6 @@ ev-counter.cpp
 Copyright (C) Elizabeth Bergshoeff 2020
 
 *///--------------------------------------------------------------------
-
-/*
-read:
-	arguments:
-		pathin, pathout
-
-		strings that point to files. First string is the path to the ev list file,
-		the second string is the path to the output file.
-*/
 /*
 	ev list file format:
 		filein:
@@ -35,7 +26,7 @@ read:
 			any character other than ev, ' ', '\n', '!'
 		name:
 			string of characters other than ' ' and '\n'
-		
+
 		Notes:
 			the first space in the pokemon decl is needed
 			reserved characters include ' ', '\n', ev, '!'
@@ -45,205 +36,211 @@ read:
 
 #include <iostream>
 #include <fstream>
+#include <exception>
+#include <iomanip>
 #include "Effort_Values.h"
 
 
 using namespace std;
 
-struct Error_fin_bad {};
-struct Error_empty_evlist {};
-struct Error_repeated_id 
+namespace
 {
-	Error_repeated_id() = delete;
-	Error_repeated_id(char c) : id(c) {}
-
-	char id;
+	void increment_ev(unsigned char& ev)
+	{
+		if (ev < 255)
+			++ev;
+	}
 };
-struct Error_filein { string path; Error_filein(const char* s) : path(s) {} };
-struct Error_pokemon_push_back {};
-struct Error_pokemon_get_index {};
 
+struct Error_rdev_ev_badbit : exception
+{
+	const char* what() { return "stream was bad in rdev_ev"; }
+};
+struct Error_rdev_pokedecl_notgood : exception
+{
+	const char* what() { return "badbit or failbit set before read_evlist finished reading pokemon declarations"; }
+};
+struct Error_read_evlist_pathin : exception
+{
+	Error_read_evlist_pathin(const char* path) : path(path) {}
+	const char* what() { return "Read_evlist was unable to open the evlist file"; }
+	string path;
+};
 
-
-
-
-
-class EV_Counter_App
+class Evlist_Reader
 {
 public:
-	EV_Counter_App() { read(); }
-	void read();
+	Evlist_Reader() { }
+	void read_evlist(const char* evlist_path);
+	ostream& write_pokefile(ostream& os);
 
 private:
-	//called by read. can throw fstream errors
-	void pokemon_decl();
-	void ev_decl();
-	void write_out();
-	
-private:
-	//used by pokemon_decl to check for repeated ids
+	// ~~~ read_evlist (rdev) input loops ~~~
 
+	// pokemon declaration, reads pokemon names and ids
+	void rdev_pokedecl();
+	// reads ev data
+	void rdev_ev();
 
 private:
-	const char* filein = "evlist.txt";
 	ifstream fin;
-
-	const char* fileout = "evsheet.txt";
-	ofstream fout;
-
-	/*
-	'idlist' and 'evlist' are related and share special properties
-	specifically
-	1. evlist and idlist should always be the same size
-	2. items in evlist and idlist which share an index are related in some way. 
-		In this case, they have the same id and this property is used to find ids in evlist
-		in the routines void pokemon_decl() and void ev_decl() in class EV_Counter_App
-		
-		if somehow they become different sizes debugging becomes difficult:
-		use of one or the other may seem reasonable in its context but its complement may not be needed
-		and may be 'brought out of order' due to edits to the one (see 1). This can cause problems in other
-		parts of the application which may be hard to track down; the issue may not be clear in context
-		due to routines like "is_id" which implicitly references only 1 of the below
-
-		TL DR; These two should always be the same size and as such should be appended together;
-			respectively they should be encapsulated together in a single object to make the code more readable.
-			see the routine void pokemon_decl() and void read() in class EV_Counter_App
-	*/
-	vector<unique_ptr<Pokemon>> evlist;
-	vector<char> idlist;
+	unique_ptr<Pokemon> pokemon_buffer = make_unique<Pokemon>();
 };
 
 
-void EV_Counter_App::read()
+void Evlist_Reader::read_evlist(const char* evlist_path)
 {
-	//clear storage
-	idlist.resize(0);
-	evlist.resize(0);
-
-	fin.open(filein);
+	fin.open(evlist_path);
 	if (fin)
 	{
-		pokemon_decl();
-		write_out();
+		rdev_pokedecl();
+		rdev_ev();
 	}
 	else
-		throw Error_filein(filein);
+		throw Error_read_evlist_pathin(evlist_path);
 }
 
-//see the 'ev list file format'
-void EV_Counter_App::pokemon_decl()
+// see the 'ev list file format'
+void Evlist_Reader::rdev_pokedecl()
 {
-	char c;
-	string s;
+	char id;
+	string name;
 	do
 	{
-		//fetch ID
-		fin.get(c);
-
-		//check fin state
-		if (fin.bad())
-			throw Error_fin_bad();
-		if (fin.fail())
-			throw Error_empty_evlist();
-
-		//check for idlist end character
-		if (c == idlist_end)
-			return;
-
-		//since the character fetched is not idlist_end or EOF, it is an id
-		//check for a redundant id
-		if (is_id(c))
-			throw Error_repeated_id(c);
-
-		//id is a new id, fetch the pokemon name
-		fin >> s;
-		//check fin
-		if (fin.bad())
-			throw Error_fin_bad();
-		if (fin.fail())
-			throw Error_empty_evlist();
-
-		unique_ptr<Pokemon> temp = make_unique<Pokemon>(c, s);
-
-		//store pokemon and id
-		evlist.push_back(move(temp));
-		idlist.push_back(c);
-
-	} while (1);
-}
-
-void EV_Counter_App::ev_decl()
-{
-	vector<int> temp(6);
-	char c;
-	vector<uchar> active_ids;
-	while (1)
-	{
-		//read a character
-		fin.get(c);
-		if (fin.bad())
-			throw Error_fin_bad();
-		if (fin.fail())
-			return;
-
-		switch (c)
+		// fetch ID
+		if (fin.get(id))
 		{
-		case 'h':
-			break;
-		case 'a':
-			break;
-		case 'd':
-			break;
-		case 'p':
-			break;
-		case 'q':
-			break;
-		case 's':
-			break;
-		default:
-			auto idit = find(idlist.begin(), idlist.end(), c);
-			if (idit == idlist.end())
-				throw Error_evlist_bad_id(c);
-			//add the tallied evs to the respective pokemon
-			
-			//clear the active ids
-			//find the new id
-
+			switch (id)
+			{
+			case idlist_end:
+				return;
+			default:
+				// retrieve pokemon name
+				// If fin is notgood, will throw exception (see below)
+				if (fin >> name)
+				{
+					//store pokemon and id
+					pokemon_buffer->push_back(name, id);
+					continue;
+				}
+			}
 		}
-
-	}
-
+		// fin was not good after fetching id or name
+		throw Error_rdev_pokedecl_notgood();
+	} while (true);
 }
 
-void EV_Counter_App::write_out()
+void Evlist_Reader::rdev_ev()
 {
-	//for debugging
-	for (int i = 0; i < evlist.size(); ++i)
+	// ~~~ local variable declarations ~~~
+
+	// character from fin
+	char c;
+
+	Effort_Values temp_count;
+	clear_effort_values(temp_count);
+
+	// index to dereference count.
+	size_t ev_index;
+
+	bool reading_ids = false;
+
+	// the pokemon which have been referenced by id before a list of ev data
+	// see evlist file specification at top of page
+	vector<int> current_ids;
+
+
+	//input loop
+	do
 	{
-		cout << evlist[i]->id << ':' << ' ' << evlist[i]->name << '\n';
+		// read a character. If the character is a stat, set index for temp_count
+		// otherwise, offload count then clear current_poke if applicable; then update current_ids
+		if (fin.get())
+		{
+			switch (c)
+			{
+			case 'h':
+				ev_index = (size_t)poke_base_stat::hp;
+				break;
+			case 'a':
+				ev_index = (size_t)poke_base_stat::attack;
+				break;
+			case 'd':
+				ev_index = (size_t)poke_base_stat::defense;
+				break;
+			case 'p':
+				ev_index = (size_t)poke_base_stat::spattack;
+				break;
+			case 'q':
+				ev_index = (size_t)poke_base_stat::spdefense;
+				break;
+			case 's':
+				ev_index = (size_t)poke_base_stat::speed;
+				break;
+			default:
+				if (!reading_ids)
+				{
+					// add the tallied evs to the respective pokemon
+					for (auto a : current_ids)
+					{
+						pokemon_buffer->add(a, temp_count);
+					}
+					// clear current_ids and temp_count
+					current_ids.resize(0);
+					clear_effort_values(temp_count);
+				}
+				// append the new id to current_ids
+				current_ids.push_back(c);
+				continue;
+			}
+			increment_ev(temp_count[ev_index]);
+		}
+		else
+		{
+			// ~~~ clean up and return ~~~
+			// add the tallied evs to the respective pokemon
+			for (auto a : current_ids)
+			{
+				pokemon_buffer->add(a, temp_count);
+			}
+			return;
+		}
+	} while (true);
+}
+
+//iterates through pokemon_buffer and prints out each pokemon's info
+ostream& Evlist_Reader::write_pokefile(ostream& os)
+{
+	Effort_Values temp;
+	string name;
+
+	for (size_t i = 0; i < pokemon_buffer->get_num_pokemon(); ++i)
+	{
+		name = pokemon_buffer->get_name(i);
+		pokemon_buffer->get_ev(i, temp);
+		os << name << endl;
+		for (size_t j = 0; j < (size_t)poke_base_stat::size; ++j)
+		{
+			os << '\t' << setw(12) << poke_base_stat_names[j] << ": " << temp[j] << endl;
+		}
+		os << endl;
 	}
 }
 
 int main()
+try
 {
-	try
-	{
-		EV_Counter_App();
-	}
-	catch (Error_fin_bad& e)
-	{
-		cerr << "Fin was bad" << endl;
-	}
-	catch (Error_empty_evlist& e)
-	{
-		cerr << "reached eof before evlist" << endl;
-	}
-	catch (Error_repeated_id& e)
-	{
-		cerr << "id was repeated" << endl;
-	}
-	catch (Error_filein& e)
-	{
-		cerr << "could not open " << e.path << endl;
-	}
+	const char* filein = "evlist.txt";
+	const char* fileout = "evsheet.txt";
+
+	Evlist_Reader evr;
+	evr.read_evlist(filein);
+
+	ofstream fout(fileout);
+	if (fout)
+		evr.write_pokefile(fout);
+}
+catch (exception& e)
+{
+	cerr << e.what();
 }
