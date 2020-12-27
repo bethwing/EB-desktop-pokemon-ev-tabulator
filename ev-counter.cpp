@@ -220,16 +220,22 @@ ostream& Evlist_Reader::write_pokefile(ostream& os)
 {
 	Effort_Values temp;
 	string name;
+	int total;
 
 	for (size_t i = 0; i < pokemon_buffer->get_num_pokemon(); ++i)
 	{
+		const int stat_field_width = 12;
+		total = 0;
 		name = pokemon_buffer->get_name(i);
 		pokemon_buffer->get_ev(i, temp);
+
 		os << name << endl;
 		for (size_t j = 0; j < (size_t)poke_base_stat::size; ++j)
 		{
-			os << '\t' << setw(12) << poke_base_stat_names[j] << ": " << (unsigned int) temp[j] << endl;
+			total += temp[j];
+			os << '\t' << setw(stat_field_width) << poke_base_stat_names[j] << ": " << (unsigned int) temp[j] << endl;
 		}
+		os << '\t' << setw(stat_field_width) << "total" << ": " << total << endl;
 		os << endl;
 	}
 	return os;
