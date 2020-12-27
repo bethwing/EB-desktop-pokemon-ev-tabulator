@@ -54,16 +54,19 @@ namespace
 
 struct Error_rdev_ev_badbit : exception
 {
-	const char* what() { return "stream was bad in rdev_ev"; }
+	virtual const char* what() const throw()
+	{ return "stream was bad in rdev_ev"; }
 };
 struct Error_rdev_pokedecl_notgood : exception
 {
-	const char* what() { return "badbit or failbit set before read_evlist finished reading pokemon declarations"; }
+	virtual const char* what() const throw()
+	{ return "badbit or failbit set before read_evlist finished reading pokemon declarations"; }
 };
 struct Error_read_evlist_pathin : exception
 {
 	Error_read_evlist_pathin(const char* path) : path(path) {}
-	const char* what() { return "Read_evlist was unable to open the evlist file"; }
+	virtual const char* what() const throw()
+	{ return "Read_evlist was unable to open the evlist file"; }
 	string path;
 };
 
@@ -112,6 +115,8 @@ void Evlist_Reader::rdev_pokedecl()
 		{
 			switch (id)
 			{
+			case ' ':
+				continue;
 			case idlist_end:
 				return;
 			default:
@@ -155,7 +160,7 @@ void Evlist_Reader::rdev_ev()
 	{
 		// read a character. If the character is a stat, set index for temp_count
 		// otherwise, offload count then clear current_poke if applicable; then update current_ids
-		if (fin.get())
+		if (fin.get(c))
 		{
 			switch (c)
 			{
@@ -180,6 +185,7 @@ void Evlist_Reader::rdev_ev()
 			default:
 				if (!reading_ids)
 				{
+					reading_ids = true;
 					// add the tallied evs to the respective pokemon
 					for (auto a : current_ids)
 					{
@@ -193,6 +199,7 @@ void Evlist_Reader::rdev_ev()
 				current_ids.push_back(c);
 				continue;
 			}
+			reading_ids = false;
 			increment_ev(temp_count[ev_index]);
 		}
 		else
@@ -221,10 +228,11 @@ ostream& Evlist_Reader::write_pokefile(ostream& os)
 		os << name << endl;
 		for (size_t j = 0; j < (size_t)poke_base_stat::size; ++j)
 		{
-			os << '\t' << setw(12) << poke_base_stat_names[j] << ": " << temp[j] << endl;
+			os << '\t' << setw(12) << poke_base_stat_names[j] << ": " << (unsigned int) temp[j] << endl;
 		}
 		os << endl;
 	}
+	return os;
 }
 
 int main()
@@ -242,5 +250,5 @@ try
 }
 catch (exception& e)
 {
-	cerr << e.what();
+	cout << e.what();
 }

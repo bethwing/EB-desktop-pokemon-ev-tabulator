@@ -44,26 +44,27 @@ struct Error_Pokemon_bad_id : exception
 
 	int id;
 
-	const char* what()
+	virtual const char* what() const noexcept
 	{
 		return "an instance of pokemon was unable to find a given id";
 	}
 };
-struct Error_Pokemon_repeated_id
+struct Error_Pokemon_repeated_id : exception
 {
 	Error_Pokemon_repeated_id() = delete;
 	Error_Pokemon_repeated_id(int c) : id(c) {}
 
 	int id;
 
-	const char* what()
+	virtual const char* what() const noexcept
 	{
 		return "tried to create a new pokemon using an id that already exists";
 	}
 };
-struct Error_Pokemon_push_back_memory
+struct Error_Pokemon_push_back_memory : exception
 {
-	const char* what() { return "pokemon::push_back was called when the number of pokemon in it equaled the name buffer size"; }
+	virtual const char* what() const noexcept
+	{ return "pokemon::push_back was called when the number of pokemon in it equaled the name buffer size"; }
 };
 
 enum class poke_base_stat : size_t
@@ -203,7 +204,7 @@ void Pokemon::push_back(string new_name, int new_id)
 		id.push_back(new_id);
 	}
 	else
-		throw Error_Pokemon_push_back();
+		throw Error_Pokemon_push_back_memory();
 }
 
 void Pokemon::get_ev(size_t index, Effort_Values& out _Out_)
@@ -220,12 +221,16 @@ size_t Pokemon::get_index(int uk_id)
 {
 	std::vector<int>::iterator it = find(id.begin(), id.end(), uk_id);
 	if (it == id.end())
-		throw Error_Pokemon_bad_id();
+		throw Error_Pokemon_bad_id(uk_id);
 	return it - id.begin();
 }
 
 bool Pokemon::is_id(int new_id)
 {
-	if (find(id.begin(), id.end(), id) == id.end()) return 0;
-	return 1;
+	for (size_t i = 0; i < get_num_pokemon(); ++i)
+	{
+		if (new_id == id[i])
+			return true;
+	}
+	return false;
 }
