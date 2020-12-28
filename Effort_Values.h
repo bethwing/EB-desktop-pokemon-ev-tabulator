@@ -105,8 +105,6 @@ struct Single_Pokemon
 //each pokemon has an id
 class Pokemon
 {
-	// ~~~ Constructors ~~~
-
 public:
 	Pokemon(size_t size)
 	{
@@ -125,6 +123,8 @@ public:
 		ev_buffer = vector<unsigned char>(ev_buffer_size, 0);
 	}
 
+	static const unsigned int max_ev = 255;
+
 	//creates a new pokemon
 	//can throw Error_pokemon_repeated_id
 	void push_back(string new_name, int new_id);
@@ -139,8 +139,7 @@ public:
 		for (size_t i = 0; i < (size_t)poke_base_stat::size; ++i)
 		{
 			const int j = i * get_buffer_size() + index;
-			const unsigned int temp = ev_buffer[j];
-			ev_buffer[j] = ceil_pos_sum(temp, ev[i], max_ev);
+			ev_buffer[j] = ceil_pos_sum(ev_buffer[j], ev[i], max_ev);
 		}
 	}
 	inline void add(int id, Effort_Values& ev _In_) 
@@ -178,10 +177,6 @@ public:
 	{ 
 		return get_name(get_index(id)); 
 	}
-
-	// ~~~ constants ~~~
-
-	const unsigned int max_ev = 255;
 
 private:
 	vector<string> name_buffer;

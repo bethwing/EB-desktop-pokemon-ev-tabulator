@@ -47,24 +47,26 @@ namespace
 {
 	void increment_ev(unsigned char& ev)
 	{
-		if (ev < 255)
+		if (ev < Pokemon::max_ev)
 			++ev;
 	}
 };
 
+// read_evlist/evlist/badbit
 struct Error_rdev_ev_badbit : exception
 {
 	virtual const char* what() const throw()
 	{ return "stream was bad in rdev_ev"; }
 };
+// read_evlist/poke_decl/notgood
 struct Error_rdev_pokedecl_notgood : exception
 {
 	virtual const char* what() const throw()
 	{ return "badbit or failbit set before read_evlist finished reading pokemon declarations"; }
 };
-struct Error_read_evlist_pathin : exception
+struct Error_rdev_pathin : exception
 {
-	Error_read_evlist_pathin(const char* path) : path(path) {}
+	Error_rdev_pathin(const char* path) : path(path) {}
 	virtual const char* what() const throw()
 	{ return "Read_evlist was unable to open the evlist file"; }
 	string path;
@@ -100,7 +102,7 @@ void Evlist_Reader::read_evlist(const char* evlist_path)
 		rdev_ev();
 	}
 	else
-		throw Error_read_evlist_pathin(evlist_path);
+		throw Error_rdev_pathin(evlist_path);
 }
 
 // see the 'ev list file format'
